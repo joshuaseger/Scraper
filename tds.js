@@ -13,9 +13,9 @@ function findColleges(){
 	return collegeLinks;
 }
 
-function tdsCollege(){
+function scrapeSoccer(){
 	var college = [];
-		college[0] = document.querySelector(' > text');
+	college[0] = document.querySelector('#leftTopLi > h1').text;
 	return college;
 }
 
@@ -34,17 +34,11 @@ casper.then(function(){
 })
 
 casper.then(function(){
-	var Colleges = [];
 	for(var i = 0; i < 5; i++){
-		var College = [];
 		var url = links[i]
-		Colleges = this.thenOpenAndEvaluate(url, function(college, colleges, index){
-			college[0] = this.fetchText('#leftTopLi > h1');
-			this.echo(college[0]);	
-			colleges[i] = college;
-			return colleges
-		}, College, Colleges, i);
-	this.echo(Colleges[i]);
+		this.thenOpen(url);
+	    college = this.evaluate(scrapeSoccer);
+		this.echo(college[0]);
 	}
 });
 
