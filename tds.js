@@ -4,6 +4,9 @@ var infoUrl = 'https://www.petersons.com/college-search/SearchResults.aspx?q=&pa
 var links = [];
 var colleges = [];
 
+
+
+
 function findColleges(){
 	var collegeLinks = document.querySelectorAll('#collegeConferenceStandings a[href*="college-soccer-details"]:not([href*="tab"])');
 		return Array.prototype.map.call(collegeLinks, function(e) {
@@ -14,9 +17,11 @@ function findColleges(){
 }
 
 function scrapeSoccer(){
-	var college = [];
-	college[0] = document.querySelector('#leftTopLi > h1').text;
-	return college;
+
+	college = new Object();
+	college.schoolName = document.querySelector('#leftTopLi > h1');
+	college.overallRecord = document.querySelector('#leftTopLi > span.statistics > span:nth-child(1)');
+	return JSON.stringify(college);
 }
 
 casper.start(tdsUrl, function(){
@@ -34,11 +39,12 @@ casper.then(function(){
 })
 
 casper.then(function(){
+	var colleges = [];
 	for(var i = 0; i < 5; i++){
 		var url = links[i]
 		this.thenOpen(url);
-	    college = this.evaluate(scrapeSoccer);
-		this.echo(college[0]);
+     	this.echo(this.evaluate(scrapeSoccer));
+
 	}
 });
 
