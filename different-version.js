@@ -15,6 +15,7 @@ casper.then(function(){
 });
 
 casper.then(function(){
+//	for(var i = 0; i < links.length; i++){
 	for(var i = 0; i < 5; i++){
 		var url = links[i]
 		getSchoolNameAndRecord(url, i);
@@ -50,7 +51,7 @@ function getSchoolNameAndRecord(url, i)
 
 	casper.waitUntilVisible('#leftTopLi', function(){
 		schoolName = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/h1')).text;
-		overallRecord = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/span[2]/span[1]')).text;
+		overallRecord = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/*[@class="statistics"]/span[1]')).text;
 		colleges[i] = schoolName;
 		overallRecords[i] = overallRecord;
 	});
