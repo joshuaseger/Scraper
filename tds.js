@@ -1,64 +1,126 @@
 var casper = require('casper').create();
+casper.options.viewportSize = {width: 700, height: 600};
 var tdsUrl = 'http://www.topdrawersoccer.com/college-soccer/teams/men';
-var infoUrl = 'https://www.petersons.com/college-search/SearchResults.aspx?q=&page=1&resultsperpage=20';
+var infoUrl = 'https://bigfuture.collegeboard.org/sitesearch?q=';
 var links = [];
 var colleges = [];
+var jsonData = [];
+var xpath = require('casper').selectXPath;
+var finalJSON;
 
 
+//START CASPER --------------------------------
+casper.start(tdsUrl);
 
+//Get links of all soccer schools D1
+casper.then(function(){
+	getLinks();
+});
 
-function findColleges(){
-	var collegeLinks = document.querySelectorAll('#collegeConferenceStandings a[href*="college-soccer-details"]:not([href*="tab"])');
-		return Array.prototype.map.call(collegeLinks, function(e) {
-    	var href = e.getAttribute('href');
-        return href;
-    });
-	return collegeLinks;
-}
+//Get soccer info for each link.
+casper.then(function(){
+//	for(var i = 0; i < links.length; i++){
+	for(var i = 0; i < 3; i++){
+		var url = links[i]
+		getSoccerInfo(url, i);
+	}
+});
 
-function scrapeSoccer(){
+//Now add college information to each college object
+casper.then(function(){
+	for(var i = 0; i < colleges.length; i++){
+		var college = colleges[i];
+		getBasicInfo(college);
+	}
 
-	college = new Object();
-	college.schoolName = document.querySelector('#leftTopLi > h1');
-	college.overallRecord = document.querySelector('#leftTopLi > span.statistics > span:nth-child(1)');
-	return JSON.stringify(college);
-}
-
-casper.start(tdsUrl, function(){
-	this.echo(this.getTitle());
 });
 
 casper.then(function(){
-	links = this.evaluate(findColleges);
-	for(var i = 0;  i < links.length; i++){
-		var link = 'http://www.topdrawersoccer.com' + links[i];
-		this.echo(link);
-		links[i] = link;
-	}
-	this.echo(links.length + ' links found:');
-})
-
-casper.then(function(){
-	var colleges = [];
-	for(var i = 0; i < 5; i++){
-		var url = links[i]
-		this.thenOpen(url);
-     	this.echo(this.evaluate(scrapeSoccer));
-
-	}
+	finalJSON = generateJSON();
+	casper.echo('-----START JSON-----');
+	casper.echo(finalJSON);
+	casper.echo('-----END JSON-----');
 });
 
 casper.run();
+//END CASPER -----------------------------------
 
+function getLinks()
+{
+	links = casper.getElementsAttribute(xpath('//*[contains(@href, "/college-soccer/college-soccer-details/men") and not(contains(@href, "tab"))]'), 'href');
 
+	for(var i = 0;  i < links.length; i++){
+		var link = 'http://www.topdrawersoccer.com' + links[i];
+		casper.echo(link);
+		links[i] = link;
+	}
 
-//#collegeConferenceStandings > div:nth-child(2) > table > tbody > tr:nth-child(1) > td.tal.first > a
-//*[@id="collegeConferenceStandings"]/div[35]   //
-//*[@id="collegeConferenceStandings"]/div[1]
-//*[@id="collegeConferenceStandings"]/div[1]/table/tbody/tr[1]/td[1]/a
-//*[@id="collegeConferenceStandings"]/div[1]/table/tbody
-//*[@id="collegeConferenceStandings"]/div[1]/table/tbody/tr[1]/td[1]/a
-//*[@id="collegeConferenceStandings"]/div[2]/table/tbody/tr[1]/td[1]/a
-//*[@id="collegeConferenceStandings"]/div[35]/table/tbody/tr[1]/td[1]/a
-//*[@id="collegeConferenceStandings"]/div[34]/table/tbody/tr[1]/td[1]/a
-//*[@id="collegeConferenceStandings"]/div[3]
+	casper.echo(links.length + ' links found');
+}
+
+function getSoccerInfo(url, i)
+{
+	casper.thenOpen(url);
+	casper.waitUntilVisible('#leftTopLi', function(){
+		var college = new Object();
+		college.schoolName = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/h1')).text.trim();
+		college.overallRecord = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/*[@class="statistics"]/span[1]')).text.trim();
+		college.conferenceRecord = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/span[2]/span[2]')).text.trim();
+		college.conference = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[1]/li[2]/a')).text.trim();
+		college.state = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[1]/li[3]')).text.split(':')[1].trim();
+		college.city = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[1]/li[4]')).text.split(':')[1].trim();
+		college.headCoach = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[1]/li[6]')).text.split(':')[1].trim();
+		college.coachPhone = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[1]/li[7]')).text.split(':')[1].trim();
+		college.nickname = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[1]/li[1]')).text.split(':')[1].trim();
+		college.rpiRanking = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/div[2]/ul/li[2]')).text.trim();
+		
+		//var rosterDistribution = casper.findAll('.playerYear');
+		//college.rosterDistribution = rosterDistribution;
+		var goals = casper.getElementInfo(xpath('//*[@id="schoolProfile"]/div/ul[2]/li[1]')).text.split('G');
+		college.goalsFor = goals[1].split(':')[1].trim();
+		college.goalsAgainst = goals[2].split(':')[1].trim();
+		colleges[i] = college;
+	});
+}
+
+function getBasicInfo(college)
+{	
+	var query = college.schoolName;
+	casper.thenOpen(infoUrl + query.replace(/ /g, '+') + '&searchType=bf_site&tp=bf_site');
+
+	casper.waitUntilVisible('#headerSearchFormContainer', function(){
+		this.echo('Searching College Board for info on ' + query);
+		casper.click(xpath('/html/body/div[6]/div[2]/dl/div/dt/p/a'));
+	});
+
+	casper.waitUntilVisible(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]'), function() {
+		this.echo('Found ' + query + ' info page');
+		college.description = casper.getElementInfo('#cpProfile_ataglance_collegeDescription_html').text.trim();
+		college.schoolUrl = casper.getElementInfo('#cpProfile_ataglance_collegeGeneralUrl_anchor').text.trim();
+		college.schoolSize = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]/div[3]/div[2]/div/h4')).text.trim();
+		college.undergradPopulation = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]/div[3]/div[2]/div/h5[1]')).text.trim();
+		college.inStateTuition = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]/div[3]/div[4]/div/div/h5[2]/span[1]')).text.trim();
+		college.outOfStateTuition = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]/div[3]/div[4]/div/div/h5[2]/span[2]')).text.trim();
+		var address = casper.getElementInfo(xpath('//*[@id="cpProfile_ataglance_visitingAddLine1_div"]/span')).text.trim();
+		address += ", " + casper.getElementInfo(xpath('//*[@id="visitingAddress"]/span[1]')).text.trim();
+		address += casper.getElementInfo(xpath('//*[@id="visitingAddress"]/span[2]')).text.trim();
+		address += " " + casper.getElementInfo(xpath('//*[@id="visitingAddress"]/span[3]')).text.trim();
+		college.address = address;
+		casper.click(xpath('//*[@id="cpProfile_tabs_majorsAndLearning_anchor"]/a'));
+	});
+	
+	casper.waitUntilVisible(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[1]/div'), function(){
+		this.echo('Retrieving faculty ratio for ' + query);
+		college.facultyRatio = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[1]/div/div[1]/div[3]/h3/span')).text.trim();
+	})
+}
+
+function generateJSON()
+{
+	for(var i = 0; i < colleges.length; i++)
+	{
+		jsonData.push(colleges[i]);
+	}
+
+	return JSON.stringify(jsonData);
+}
