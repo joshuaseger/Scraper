@@ -21,7 +21,7 @@ casper.then(function(){
 casper.then(function(){
 //	for(var i = 0; i < links.length; i++){
 	for(var i = 0; i < 3; i++){
-		var url = links[i]
+		var url = links[i];
 		getSoccerInfo(url, i);
 	}
 });
