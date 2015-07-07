@@ -7,6 +7,7 @@ var colleges = [];
 var jsonData = [];
 var xpath = require('casper').selectXPath;
 var finalJSON;
+var fs = require('fs');
 
 
 //START CASPER --------------------------------
@@ -21,7 +22,7 @@ casper.then(function(){
 casper.then(function(){
 //	for(var i = 0; i < links.length; i++){
 	for(var i = 0; i < 3; i++){
-		var url = links[i]
+		var url = links[i];
 		getSoccerInfo(url, i);
 	}
 });
@@ -62,6 +63,7 @@ function getSoccerInfo(url, i)
 {
 	casper.thenOpen(url);
 	casper.waitUntilVisible('#leftTopLi', function(){
+		this.echo('Getting soccer info from ' + url);
 		var college = new Object();
 		college.schoolName = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/h1')).text.trim();
 		college.overallRecord = casper.getElementInfo(xpath('//*[@id="leftTopLi"]/*[@class="statistics"]/span[1]')).text.trim();
@@ -86,14 +88,17 @@ function getSoccerInfo(url, i)
 function getBasicInfo(college)
 {	
 	var query = college.schoolName;
-	casper.thenOpen(infoUrl + query.replace(/ /g, '+') + '&searchType=bf_site&tp=bf_site');
+	var searchUrl = infoUrl + query.replace(/ /g, '+') + '&searchType=bf_site&tp=bf_site'
+	casper.thenOpen(searchUrl);
+
 
 	casper.waitUntilVisible('#headerSearchFormContainer', function(){
-		this.echo('Searching College Board for info on ' + query);
-		casper.click(xpath('/html/body/div[6]/div[2]/dl/div/dt/p/a'));
+		this.echo('Search collegeboard.com url: ' + searchUrl);
+		casper.click(xpath('/html/body/div[6]/div[2]/dl/div[2]/dt/p/a'));
 	});
 
-	casper.waitUntilVisible(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]'), function() {
+	casper.waitUntilVisible('#topFrame', function() {
+		this.echo('Landed on collegeboard info page for ' + query);
 		this.echo('Found ' + query + ' info page');
 		college.description = casper.getElementInfo('#cpProfile_ataglance_collegeDescription_html').text.trim();
 		college.schoolUrl = casper.getElementInfo('#cpProfile_ataglance_collegeGeneralUrl_anchor').text.trim();
@@ -121,6 +126,7 @@ function generateJSON()
 	{
 		jsonData.push(colleges[i]);
 	}
-
-	return JSON.stringify(jsonData);
+	var output = JSON.stringify(jsonData);
+	fs.write(output, output, 'w');
+	return output;
 }
