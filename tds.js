@@ -8,7 +8,9 @@ var jsonData = [];
 var xpath = require('casper').selectXPath;
 var finalJSON;
 var fs = require('fs');
-
+var startIndex = 200;
+var endIndex = 205;
+//output.json updated to index = 175
 
 //START CASPER --------------------------------
 casper.start(tdsUrl);
@@ -21,7 +23,7 @@ casper.then(function(){
 //Get soccer info for each link.
 casper.then(function(){
 //	for(var i = 0; i < links.length; i++){
-	for(var i = 0; i < 10; i++){
+	for(var i = startIndex; i < endIndex; i++){
 		var url = links[i];
 		getSoccerInfo(url, i);
 	}
@@ -29,7 +31,7 @@ casper.then(function(){
 
 //Now add college information to each college object
 casper.then(function(){
-	for(var i = 0; i < colleges.length; i++){
+	for(var i = startIndex; i < colleges.length; i++){
 		var college = colleges[i];
 		getBasicInfo(college);
 	}
@@ -48,11 +50,12 @@ casper.run();
 
 function getLinks()
 {
+	casper.echo('Getting links for soccer schools');
 	links = casper.getElementsAttribute(xpath('//*[contains(@href, "/college-soccer/college-soccer-details/men") and not(contains(@href, "tab"))]'), 'href');
 
 	for(var i = 0;  i < links.length; i++){
 		var link = 'http://www.topdrawersoccer.com' + links[i];
-		casper.echo(link);
+		casper.echo('Index: ' + i + ' --- ' + link);
 		links[i] = link;
 	}
 
@@ -97,34 +100,26 @@ function getBasicInfo(college)
 	var searchUrl = infoUrl + query.replace(/ /g, '+') + '&searchType=bf_site&tp=bf_site'
 	casper.thenOpen(searchUrl);
 
-
 	casper.waitUntilVisible('#headerSearchFormContainer', function(){
 		this.echo('Search collegeboard.com url: ' + searchUrl);
 		if(this.exists(xpath('/html/body/div[6]/div[2]/dl/div[2]/dt/p/a'))){
 			this.echo('Clicked on sub list for school');
 			if(this.exists(xpath('/html/body/div[6]/div[2]/dl/div[1]/dt/p/a'))){
-				this.echo('Davidson case !!!!!!!!!!!!!!!!!!!!!!!!!');
 				casper.click(xpath('/html/body/div[6]/div[2]/dl/div[1]/dt/p/a'));
 			}
 			else{
-				this.echo('Not Davidson case -------------------------');
 				casper.click(xpath('/html/body/div[6]/div[2]/dl/div[2]/dt/p/a'));
 			}
-			
-	
-		
-
 		}
 		else{
 			this.echo('Clicked on main list for school');
 			casper.click(xpath('/html/body/div[6]/div[2]/dl/div/dt/p/a'));
-
 		}
 		
 	});
 
 	casper.waitUntilVisible('#topFrame', function() {
-		this.echo('Scraping collegeBoard.com for ' + query);
+		this.echo('Scraping ' + query + ' profile page from collegeboard.com');
 		college.description = casper.getElementInfo('#cpProfile_ataglance_collegeDescription_html').text.trim();
 		college.schoolUrl = casper.getElementInfo('#cpProfile_ataglance_collegeGeneralUrl_anchor').text.trim();
 		college.schoolSize = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[2]/div[1]/div[3]/div[2]/div/h4')).text.trim();
@@ -140,23 +135,26 @@ function getBasicInfo(college)
 	});
 	
 	casper.waitUntilVisible(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[1]/div'), function(){
+		this.echo('Scraping college faculty ratio');
 		college.facultyRatio = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[1]/div/div[1]/div[3]/h3/span')).text.trim();
 		casper.click(xpath('//*[@id="cpProfile_tabs_applying_anchor"]/a'));
 	});
 
 	casper.waitUntilVisible('#topFrame > div.grid_10.alpha.omega.grid_10_ao > div:nth-child(2) > div > div > div.rightFrameContainer.clearfix.profileApplying > div.grid_7.alpha.grid_7_ao', function(){
+		this.echo('Scraping college acceptance level');
 		college.acceptanceLevel = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[1]/div[1]/div[3]/p/div[1]')).text.trim();
 		college.acceptanceRate = casper.getElementInfo(xpath('//*[@id="topFrame"]/div[2]/div[2]/div/div/div[1]/div[1]/div[3]/p/div[3]')).text.split('%')[0];
+
 	});
 }
 
 function generateJSON()
 {
-	for(var i = 0; i < colleges.length; i++)
+	for(var i = startIndex; i < colleges.length; i++)
 	{
 		jsonData.push(colleges[i]);
 	}
 	var output = JSON.stringify(jsonData);
-	fs.write('output.json', output, 'w');
+	fs.write('output.json', output, 'a');
 	return output;
 }
